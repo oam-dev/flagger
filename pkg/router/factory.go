@@ -44,18 +44,29 @@ func (factory *Factory) KubernetesRouter(kind string, labelSelector string, port
 	case "Service":
 		return &KubernetesNoopRouter{}
 	default: // Daemonset or Deployment
-		return &KubernetesDefaultRouter{
-			logger:        factory.logger,
-			flaggerClient: factory.flaggerClient,
-			kubeClient:    factory.kubeClient,
-			labelSelector: labelSelector,
-			ports:         ports,
+		return &ExtKubernetesDefaultRouter{
+			innerK8sRouter: &KubernetesDefaultRouter{
+				logger:        factory.logger,
+				flaggerClient: factory.flaggerClient,
+				kubeClient:    factory.kubeClient,
+				labelSelector: labelSelector,
+				ports:         ports,
+			},
 		}
 	}
 }
 
 // MeshRouter returns a service mesh router
 func (factory *Factory) MeshRouter(provider string, labelSelector string) Interface {
+	return  &RouterScalableWrapper{
+		logger:        factory.logger,
+		flaggerClient: factory.flaggerClient,
+		kubeClient:        factory.kubeClient,
+		innerRouter: factory.innerMeshRouter(provider, labelSelector),
+	}
+}
+
+func (factory *Factory) innerMeshRouter(provider string, labelSelector string) Interface {
 	switch {
 	case strings.HasPrefix(provider, flaggerv1.AppMeshProvider+":v1beta2"):
 		return &AppMeshv1beta2Router{
@@ -138,3 +149,5 @@ func (factory *Factory) MeshRouter(provider string, labelSelector string) Interf
 		}
 	}
 }
+
+

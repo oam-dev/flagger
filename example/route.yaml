@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-demo
+spec:
+  selector:
+    routeId: example
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 10081
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-demo
+spec:
+  rules:
+    - http:
+        paths:
+          - backend:
+              serviceName: example-demo
+              servicePort: 80
+

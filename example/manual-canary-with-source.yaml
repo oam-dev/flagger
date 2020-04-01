@@ -1,0 +1,47 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: example-demo
+  annotations:
+    oam.canary.extension.switch: "true"
+    oam.canary.distinguish.labels: "pod-template-hash"
+spec:
+  provider: nginx
+  # deployment reference
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: example-demo-canary
+  sourceRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: example-demo
+  # ingress reference
+  ingressRef:
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    name: example-demo
+  progressDeadlineSeconds: 60
+  service:
+    name: example-demo
+    # ClusterIP port number
+    port: 80
+    # container port number or name
+    targetPort: 8080
+  analysis:
+    # replicas scale up to canary
+    canaryReplicas: 0
+    # canary increment step
+    # percentage (0-100)
+    canaryWeight: 0
+    # max traffic percentage routed to canary
+    # percentage (0-100)
+    maxWeight: 101
+    # schedule interval (default 60s)
+    interval: 3s
+    # max number of failed metric checks before rollback
+    threshold: 2147483647
+    # stepWeight
+    stepWeight: 0
+    # max replicas scale up to canary
+    maxReplicas: 4

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-demo
+  labels:
+    app: example
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: example
+  template:
+    metadata:
+      labels:
+        app: example
+        routeId: example
+    spec:
+      imagePullSecrets:
+        - name: edas-images-dockercfg
+        - name: shared-edas-images-dockercfg
+      containers:
+        - name: example
+          image: registry-vpc.cn-beijing.aliyuncs.com/edas-serverless-user/1362469756373809_shared_repo:jibei-demo-1590150834
+          ports:
+            - containerPort: 18081
+          env:
+            - name: k1
+              value: v1
+            - name: k3
+              value: v3

@@ -861,6 +861,7 @@ spec:
                 - msteams
                 - discord
                 - rocket
+                - dingtalk
             address:
               description: Hook URL address of this provider
               type: string

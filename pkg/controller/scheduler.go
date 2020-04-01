@@ -343,7 +343,7 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 	}
 
 	// strategy: Canary progressive traffic increase
-	if cd.GetAnalysis().StepWeight > 0 {
+	if cd.GetAnalysis().StepWeight >= 0 {
 		c.runCanary(cd, canaryController, meshRouter, mirrored, canaryWeight, primaryWeight, maxWeight)
 	}
 

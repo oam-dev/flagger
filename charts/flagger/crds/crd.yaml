@@ -211,9 +211,6 @@ spec:
                     request:
                       properties:
                         add:
-                          additionalProperties:
-                            format: string
-                            type: string
                           type: object
                         remove:
                           items:
@@ -221,17 +218,11 @@ spec:
                             type: string
                           type: array
                         set:
-                          additionalProperties:
-                            format: string
-                            type: string
                           type: object
                       type: object
                     response:
                       properties:
                         add:
-                          additionalProperties:
-                            format: string
-                            type: string
                           type: object
                         remove:
                           items:
@@ -239,9 +230,6 @@ spec:
                             type: string
                           type: array
                         set:
-                          additionalProperties:
-                            format: string
-                            type: string
                           type: object
                       type: object
                 gateways:
@@ -405,8 +393,6 @@ spec:
                                     format: string
                                     type: string
                                   to:
-                                    additionalProperties:
-                                      type: integer
                                     description: Map of upstream localities to traffic
                                       distribution weights.
                                     type: object
@@ -682,8 +668,6 @@ spec:
                       metadata:
                         description: Metadata (key-value pairs) for this webhook
                         type: object
-                        additionalProperties:
-                          type: string
         status:
           properties:
             phase:

@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"github.com/weaveworks/flagger/pkg/apis/edas/v1alpha1/route"
 	"time"
 
 	istiov1alpha3 "github.com/weaveworks/flagger/pkg/apis/istio/v1alpha3"
@@ -65,6 +66,8 @@ type CanarySpec struct {
 	// MetricsServer overwrites the -metrics-server flag for this particular canary
 	// +optional
 	MetricsServer string `json:"metricsServer,omitempty"`
+
+	SourceRef CrossNamespaceObjectReference `json:"sourceRef"`
 
 	// TargetRef references a target resource
 	TargetRef CrossNamespaceObjectReference `json:"targetRef"`
@@ -228,6 +231,31 @@ type CanaryAnalysis struct {
 	// A/B testing HTTP header match conditions
 	// +optional
 	Match []istiov1alpha3.HTTPMatchRequest `json:"match,omitempty"`
+
+	// A/B testing dubbo match conditions
+	// +optional
+	DubboMatch []route.DubboMatchRequest `json:"dubboMatch,omitempty"`
+
+	// A/B testing spring cloud match conditions
+	// +optional
+	SpringCloudMatch []route.SpringCloudMatchRequest `json:"springCloudMatch,omitempty"`
+
+	// Max replicas scale up to canary
+	// +optional
+	MaxReplicas  int `json:"maxReplicas,omitempty"`
+
+	// Increment replicas step
+	// +optional
+	StepReplicas int `json:"stepReplicas,omitempty"`
+
+	// A/B testing fixed canary Replicas
+	// +optional
+	CanaryReplicas int `json:"canaryReplicas,omitempty"`
+
+	// Specific traffic percentage routed to canary
+	// routers prefer this field to computed canaryWeight
+	// +optional
+	CanaryWeight int `json:"canaryWeight,omitempty"`
 }
 
 // CanaryMetric holds the reference to metrics used for canary analysis
@@ -373,6 +401,7 @@ func (c *Canary) GetServiceNames() (apexName, primaryName, canaryName string) {
 	}
 	primaryName = fmt.Sprintf("%s-primary", apexName)
 	canaryName = fmt.Sprintf("%s-canary", apexName)
+
 	return
 }
 
@@ -416,6 +445,8 @@ func (c *Canary) GetAnalysisInterval() time.Duration {
 func (c *Canary) GetAnalysisThreshold() int {
 	if c.GetAnalysis().Threshold > 0 {
 		return c.GetAnalysis().Threshold
+	} else if c.GetAnalysis().Threshold < 0 {
+		return 0
 	}
 	return 1
 }

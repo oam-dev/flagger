@@ -164,8 +164,14 @@ func alertMetadata(canary *flaggerv1.Canary) []notifier.Field {
 			Value: fmt.Sprintf("%vs", canary.GetProgressDeadlineSeconds()),
 		},
 	)
-
-	if canary.GetAnalysis().StepWeight > 0 {
+	if canary.GetAnalysis().StepReplicas > 0 {
+		fields = append(fields, notifier.Field{
+			Name: "Rolling update",
+			Value: fmt.Sprintf("replicas step: %v max: %v",
+				canary.GetAnalysis().StepReplicas,
+				canary.GetAnalysis().MaxReplicas),
+		})
+	} else if canary.GetAnalysis().StepWeight > 0 {
 		fields = append(fields, notifier.Field{
 			Name: "Traffic routing",
 			Value: fmt.Sprintf("Weight step: %v max: %v",

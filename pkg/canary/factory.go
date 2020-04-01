@@ -49,12 +49,14 @@ func (factory *Factory) Controller(kind string) Controller {
 		kubeClient:    factory.kubeClient,
 		flaggerClient: factory.flaggerClient,
 	}
-
+	extDeploymentController :=  &ExtDeploymentController{
+		deploymentCtrl,
+	}
 	switch kind {
 	case "DaemonSet":
 		return daemonSetCtrl
 	case "Deployment":
-		return deploymentCtrl
+		return extDeploymentController
 	case "Service":
 		return serviceCtrl
 	default:
