@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	flaggerv1 "github.com/weaveworks/flagger/pkg/apis/flagger/v1beta1"
+	cny "github.com/weaveworks/flagger/pkg/canary"
 )
 
 const finalizer = "finalizer.flagger.app"
@@ -24,7 +25,16 @@ func (c *Controller) finalize(old interface{}) error {
 	}
 
 	// Retrieve a controller
-	canaryController := c.canaryFactory.Controller(canary.Spec.TargetRef.Kind)
+	// init controller based on Strategy or Target kind
+	var canaryController cny.Controller
+	if canary.Spec.Strategy == "" || canary.Spec.Strategy == "flagger" {
+		canaryController, err = c.canaryFactory.Controller(canary.Spec.TargetRef.Kind)
+	} else {
+		canaryController, err = c.canaryFactory.Controller(canary.Spec.Strategy)
+	}
+	if err != nil {
+		return fmt.Errorf("get controller error: %w", err)
+	}
 
 	// Set the status to terminating if not already in that state
 	if canary.Status.Phase != flaggerv1.CanaryPhaseTerminating {

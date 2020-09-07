@@ -18,8 +18,9 @@ package v1beta1
 
 import (
 	"fmt"
-	"github.com/weaveworks/flagger/pkg/apis/edas/v1alpha1/route"
 	"time"
+
+	"github.com/weaveworks/flagger/pkg/apis/edas/v1alpha1/route"
 
 	istiov1alpha3 "github.com/weaveworks/flagger/pkg/apis/istio/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,7 +68,11 @@ type CanarySpec struct {
 	// +optional
 	MetricsServer string `json:"metricsServer,omitempty"`
 
-	SourceRef CrossNamespaceObjectReference `json:"sourceRef"`
+	// Strategy indicates whether it's rolling, inplace, or flagger
+	// rolling: rolling update from old revisions to the target one, OAM revisionEnabled=true
+	// inplace: update inplace, OAM revisionEnabled=false
+	// flagger: flagger the old way, OAM revisionEnabled=false
+	Strategy string `json:"strategy,omitempty"`
 
 	// TargetRef references a target resource
 	TargetRef CrossNamespaceObjectReference `json:"targetRef"`
@@ -242,7 +247,7 @@ type CanaryAnalysis struct {
 
 	// Max replicas scale up to canary
 	// +optional
-	MaxReplicas  int `json:"maxReplicas,omitempty"`
+	MaxReplicas int `json:"maxReplicas,omitempty"`
 
 	// Increment replicas step
 	// +optional

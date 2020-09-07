@@ -87,7 +87,7 @@ func newDaemonSetFixture(c *flaggerv1.Canary) daemonSetFixture {
 		KubeClient:    kubeClient,
 		FlaggerClient: flaggerClient,
 	}
-	canaryFactory := canary.NewFactory(kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
+	canaryFactory := canary.NewFactory(nil, kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
 
 	ctrl := &Controller{
 		kubeClient:       kubeClient,
@@ -111,10 +111,10 @@ func newDaemonSetFixture(c *flaggerv1.Canary) daemonSetFixture {
 	ctrl.flaggerInformers.AlertInformer.Informer().GetIndexer().Add(newDaemonSetTestAlertProvider())
 
 	meshRouter := rf.MeshRouter("istio", "")
-
+	deployer, _ := canaryFactory.Controller("DaemonSet")
 	return daemonSetFixture{
 		canary:        c,
-		deployer:      canaryFactory.Controller("DaemonSet"),
+		deployer:      deployer,
 		logger:        logger,
 		flaggerClient: flaggerClient,
 		meshClient:    flaggerClient,

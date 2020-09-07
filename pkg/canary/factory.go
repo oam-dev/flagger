@@ -1,13 +1,17 @@
 package canary
 
 import (
+	"errors"
+
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	clientset "github.com/weaveworks/flagger/pkg/client/clientset/versioned"
 )
 
 type Factory struct {
+	kubeConfig    *rest.Config
 	kubeClient    kubernetes.Interface
 	flaggerClient clientset.Interface
 	logger        *zap.SugaredLogger
@@ -15,12 +19,14 @@ type Factory struct {
 	labels        []string
 }
 
-func NewFactory(kubeClient kubernetes.Interface,
+func NewFactory(kubeConfig *rest.Config,
+	kubeClient kubernetes.Interface,
 	flaggerClient clientset.Interface,
 	configTracker Tracker,
 	labels []string,
 	logger *zap.SugaredLogger) *Factory {
 	return &Factory{
+		kubeConfig:    kubeConfig,
 		kubeClient:    kubeClient,
 		flaggerClient: flaggerClient,
 		logger:        logger,
@@ -29,7 +35,7 @@ func NewFactory(kubeClient kubernetes.Interface,
 	}
 }
 
-func (factory *Factory) Controller(kind string) Controller {
+func (factory *Factory) Controller(kind string) (Controller, error) {
 	deploymentCtrl := &DeploymentController{
 		logger:        factory.logger,
 		kubeClient:    factory.kubeClient,
@@ -49,17 +55,25 @@ func (factory *Factory) Controller(kind string) Controller {
 		kubeClient:    factory.kubeClient,
 		flaggerClient: factory.flaggerClient,
 	}
-	extDeploymentController :=  &ExtDeploymentController{
-		deploymentCtrl,
-	}
+
 	switch kind {
 	case "DaemonSet":
-		return daemonSetCtrl
+		return daemonSetCtrl, nil
 	case "Deployment":
-		return extDeploymentController
+		return deploymentCtrl, nil
 	case "Service":
-		return serviceCtrl
+		return serviceCtrl, nil
+	case "rolling":
+		return NewRollingController(factory.kubeConfig,
+			factory.kubeClient,
+			factory.flaggerClient,
+			factory.logger,
+			factory.configTracker,
+			factory.labels)
+	case "inplace":
+		//TODO implement inplace controller
+		return nil, errors.New("inplace strategy not implemented")
 	default:
-		return deploymentCtrl
+		return deploymentCtrl, nil
 	}
 }

@@ -98,8 +98,19 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 		provider = cd.Spec.Provider
 	}
 
-	// init controller based on target kind
-	canaryController := c.canaryFactory.Controller(cd.Spec.TargetRef.Kind)
+	// init controller based on Strategy or Target kind
+	var canaryController canary.Controller
+	if cd.Spec.Strategy == "" || cd.Spec.Strategy == "flagger" {
+		canaryController, err = c.canaryFactory.Controller(cd.Spec.TargetRef.Kind)
+	} else {
+		canaryController, err = c.canaryFactory.Controller(cd.Spec.Strategy)
+	}
+	if err != nil {
+		c.logger.With("canary", fmt.Sprintf("%s.%s", name, namespace)).
+			Errorf("create controller err %v", err)
+		return
+	}
+
 	labelSelector, ports, err := canaryController.GetMetadata(cd)
 	if err != nil {
 		c.recordEventWarningf(cd, "%v", err)

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +35,7 @@ const controllerAgentName = "flagger"
 
 // Controller is managing the canary objects and schedules canary deployments
 type Controller struct {
+	kubeConfig       *rest.Config
 	kubeClient       kubernetes.Interface
 	flaggerClient    clientset.Interface
 	flaggerInformers Informers
@@ -59,6 +62,7 @@ type Informers struct {
 }
 
 func NewController(
+	kubeConfig *rest.Config,
 	kubeClient kubernetes.Interface,
 	flaggerClient clientset.Interface,
 	flaggerInformers Informers,
@@ -85,6 +89,7 @@ func NewController(
 	recorder.SetInfo(version, meshProvider)
 
 	ctrl := &Controller{
+		kubeConfig:       kubeConfig,
 		kubeClient:       kubeClient,
 		flaggerClient:    flaggerClient,
 		flaggerInformers: flaggerInformers,

@@ -23,34 +23,21 @@ type ExtKubernetesDefaultRouter struct {
 
 // Initialize creates the primary and canary services
 func (e *ExtKubernetesDefaultRouter) Initialize(canary *flaggerv1.Canary) error {
-	primaryName, _, canaryName := canary.GetServiceNames()
-	_, exist := internal.CanaryDistinguishLabelsExisted(canary)
-	if exist {
-		if internal.HasSourceTargetRef(canary) && !internal.IsInitializing(canary) {
-			// not in initialization status, return
-			return nil
-		}
 
-		if !internal.HasSourceTargetRef(canary) && !internal.IsInitialized(canary) {
-			// only in initialized status, primary get ready
-			return nil
-		}
+	// primary svc
 
-		// primary svc
-		sourceName := internal.GetSourceName(canary)
-		err := e.reconcileService(canary, primaryName, sourceName, true, canary.Spec.Service.Canary)
-		if err != nil {
-			return fmt.Errorf("reconcileService failed: %w", err)
-		}
-
-		// canary svc
-		err = e.reconcileService(canary, canaryName, canary.Spec.TargetRef.Name, true, canary.Spec.Service.Canary)
-		if err != nil {
-			return fmt.Errorf("reconcileService failed: %w", err)
-		}
-		return nil
+	sourceName := internal.GetSourceName(canary)
+	err := e.reconcileService(canary, primaryName, sourceName, true, canary.Spec.Service.Canary)
+	if err != nil {
+		return fmt.Errorf("reconcileService failed: %w", err)
 	}
-	return e.innerK8sRouter.Initialize(canary)
+
+	// canary svc
+	err = e.reconcileService(canary, canaryName, canary.Spec.TargetRef.Name, true, canary.Spec.Service.Canary)
+	if err != nil {
+		return fmt.Errorf("reconcileService failed: %w", err)
+	}
+	return nil
 }
 
 // Reconcile creates or updates the main service

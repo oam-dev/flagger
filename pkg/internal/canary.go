@@ -1,8 +1,6 @@
 package internal
 
 import (
-	"fmt"
-
 	"github.com/weaveworks/flagger/pkg/apis/flagger/v1beta1"
 )
 
@@ -14,10 +12,6 @@ func IsRollingUpdate(canary *v1beta1.Canary) bool {
 
 func IsExtentOn(canary *v1beta1.Canary) bool {
 	return canary.Annotations[OAM_CANARY_EXT_SWITCH] == "true"
-}
-
-func HasSourceTargetRef(canary *v1beta1.Canary) bool {
-	return canary.Spec.SourceRef.Name != ""
 }
 
 //  Whether canary promoted
@@ -45,14 +39,4 @@ func IsInitializing(canary *v1beta1.Canary) bool {
 
 func IsInitialized(canary *v1beta1.Canary) bool {
 	return canary.Status.Phase == v1beta1.CanaryPhaseInitialized
-}
-
-func GetSourceName(canary *v1beta1.Canary) string {
-	var sourceName string
-	if HasSourceTargetRef(canary) {
-		sourceName = canary.Spec.SourceRef.Name
-	} else {
-		sourceName = fmt.Sprintf("%s-primary", canary.Spec.TargetRef.Name)
-	}
-	return sourceName
 }

@@ -184,9 +184,10 @@ func main() {
 		configTracker = &canary.NopTracker{}
 	}
 
-	canaryFactory := canary.NewFactory(kubeClient, flaggerClient, configTracker, labels, logger)
+	canaryFactory := canary.NewFactory(cfg, kubeClient, flaggerClient, configTracker, labels, logger)
 
 	c := controller.NewController(
+		cfg,
 		kubeClient,
 		flaggerClient,
 		infos,
