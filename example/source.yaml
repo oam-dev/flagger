@@ -14,13 +14,14 @@ spec:
       labels:
         app: example
         routeId: example
+        pod-template-hash: 7564juhy8m6n785i
     spec:
       imagePullSecrets:
         - name: edas-images-dockercfg
         - name: shared-edas-images-dockercfg
       containers:
         - name: example
-          image: registry-vpc.cn-beijing.aliyuncs.com/edas-serverless-user/1362469756373809_shared_repo:jibei-demo-1590150834
+          image: nginx
           ports:
             - containerPort: 18081
           env:

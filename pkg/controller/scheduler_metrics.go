@@ -70,7 +70,9 @@ func (c *Controller) checkMetricProviderAvailability(canary *flaggerv1.Canary) e
 			}
 		}
 	}
-	c.recordEventInfof(canary, "all the metrics providers are available!")
+	if len(canary.GetAnalysis().Metrics)  > 0 {
+		c.recordEventInfof(canary, "all the metrics providers are available!")
+	}
 	return nil
 }
 
