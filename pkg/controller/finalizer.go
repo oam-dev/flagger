@@ -23,6 +23,11 @@ func (c *Controller) finalize(old interface{}) error {
 		return fmt.Errorf("get query error: %w", err)
 	}
 
+	// OAM should never come here
+	if canary.Spec.Provider == flaggerv1.OAMProvider {
+		return fmt.Errorf("OAM does not support revert on delete: %v", canary.Spec.TargetRef)
+	}
+
 	// Retrieve a controller
 	canaryController := c.canaryFactory.Controller(canary.Spec.TargetRef.Kind)
 

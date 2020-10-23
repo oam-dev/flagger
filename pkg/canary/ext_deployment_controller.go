@@ -24,7 +24,7 @@ func (rdc *ExtDeploymentController) Initialize(canary *flaggerv1.Canary) (err er
 
 		if canary.Status.Phase == "" || canary.Status.Phase == flaggerv1.CanaryPhaseInitializing {
 			if !canary.SkipAnalysis() {
-				if _, err := rdc.isDeploymentReady(primary, canary.GetProgressDeadlineSeconds()); err != nil {
+				if _, err := IsDeploymentReady(primary, canary.GetProgressDeadlineSeconds()); err != nil {
 					return fmt.Errorf("IsPrimaryReady failed: %w", err)
 				}
 			}
@@ -53,7 +53,7 @@ func (rdc *ExtDeploymentController) IsPrimaryReady(canary *flaggerv1.Canary) err
 			return fmt.Errorf("deployment %s.%s get query error: %w", primaryName, canary.Namespace, err)
 		}
 
-		_, err = rdc.isDeploymentReady(primary, canary.GetProgressDeadlineSeconds())
+		_, err = IsDeploymentReady(primary, canary.GetProgressDeadlineSeconds())
 		return err
 	} else {
 		return rdc.DeploymentController.IsPrimaryReady(canary)

@@ -75,6 +75,10 @@ func (c *Controller) checkMetricProviderAvailability(canary *flaggerv1.Canary) e
 }
 
 func (c *Controller) runBuiltinMetricChecks(canary *flaggerv1.Canary) bool {
+	if len(canary.GetAnalysis().Metrics)==0 {
+		return true
+	}
+
 	// override the global provider if one is specified in the canary spec
 	var metricsProvider string
 	// set the metrics provider to Crossover Prometheus when Crossover is the mesh provider

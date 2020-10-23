@@ -115,7 +115,7 @@ func newDeploymentFixture(c *flaggerv1.Canary) fixture {
 		KubeClient:    kubeClient,
 		FlaggerClient: flaggerClient,
 	}
-	canaryFactory := canary.NewFactory(kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
+	canaryFactory := canary.NewFactory(nil, kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
 
 	ctrl := &Controller{
 		kubeClient:       kubeClient,
@@ -291,7 +291,10 @@ func newDeploymentTestCanary() *flaggerv1.Canary {
 				Metrics: []flaggerv1.CanaryMetric{
 					{
 						Name:      "request-success-rate",
-						Threshold: 99,
+						ThresholdRange: &flaggerv1.CanaryThresholdRange{
+							Min: toFloatPtr(0),
+							Max: toFloatPtr(99),
+						},
 						Interval:  "1m",
 					},
 					{

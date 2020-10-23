@@ -21,7 +21,7 @@ func (c *DeploymentController) IsPrimaryReady(cd *flaggerv1.Canary) error {
 		return fmt.Errorf("deployment %s.%s get query error: %w", primaryName, cd.Namespace, err)
 	}
 
-	_, err = c.isDeploymentReady(primary, cd.GetProgressDeadlineSeconds())
+	_, err = IsDeploymentReady(primary, cd.GetProgressDeadlineSeconds())
 	if err != nil {
 		return fmt.Errorf("%s.%s not ready: %w", primaryName, cd.Namespace, err)
 	}
@@ -43,7 +43,7 @@ func (c *DeploymentController) IsCanaryReady(cd *flaggerv1.Canary) (bool, error)
 		return true, fmt.Errorf("deployment %s.%s get query error: %w", targetName, cd.Namespace, err)
 	}
 
-	retryable, err := c.isDeploymentReady(canary, cd.GetProgressDeadlineSeconds())
+	retryable, err := IsDeploymentReady(canary, cd.GetProgressDeadlineSeconds())
 	if err != nil {
 		return retryable, fmt.Errorf(
 			"canary deployment %s.%s not ready: %w",
@@ -53,16 +53,16 @@ func (c *DeploymentController) IsCanaryReady(cd *flaggerv1.Canary) (bool, error)
 	return true, nil
 }
 
-// isDeploymentReady determines if a deployment is ready by checking the status conditions
+// IsDeploymentReady determines if a deployment is ready by checking the status conditions
 // if a deployment has exceeded the progress deadline it returns a non retriable error
-func (c *DeploymentController) isDeploymentReady(deployment *appsv1.Deployment, deadline int) (bool, error) {
+func IsDeploymentReady(deployment *appsv1.Deployment, deadline int) (bool, error) {
 	retriable := true
 	if deployment.Generation <= deployment.Status.ObservedGeneration {
-		progress := c.getDeploymentCondition(deployment.Status, appsv1.DeploymentProgressing)
+		progress := GetDeploymentCondition(deployment.Status, appsv1.DeploymentProgressing)
 		if progress != nil {
 			// Determine if the deployment is stuck by checking if there is a minimum replicas unavailable condition
 			// and if the last update time exceeds the deadline
-			available := c.getDeploymentCondition(deployment.Status, appsv1.DeploymentAvailable)
+			available := GetDeploymentCondition(deployment.Status, appsv1.DeploymentAvailable)
 			if available != nil && available.Status == "False" && available.Reason == "MinimumReplicasUnavailable" {
 				from := available.LastUpdateTime
 				delta := time.Duration(deadline) * time.Second
@@ -89,10 +89,8 @@ func (c *DeploymentController) isDeploymentReady(deployment *appsv1.Deployment, 
 	return true, nil
 }
 
-func (c *DeploymentController) getDeploymentCondition(
-	status appsv1.DeploymentStatus,
-	conditionType appsv1.DeploymentConditionType,
-) *appsv1.DeploymentCondition {
+func GetDeploymentCondition(status appsv1.DeploymentStatus,
+	conditionType appsv1.DeploymentConditionType) *appsv1.DeploymentCondition {
 	for i := range status.Conditions {
 		c := status.Conditions[i]
 		if c.Type == conditionType {

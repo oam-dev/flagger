@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crossplane/oam-kubernetes-runtime/pkg/oam"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 
@@ -98,16 +99,38 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 		provider = cd.Spec.Provider
 	}
 
-	// init controller based on target kind
-	canaryController := c.canaryFactory.Controller(cd.Spec.TargetRef.Kind)
+	var canaryController canary.Controller
+	var componentName string
+	var rollingController *canary.OAMRolloutController
+	if c.meshProvider == flaggerv1.OAMProvider {
+		// init controller based on the provider for OAM
+		rollingController, err = canary.NewRollingController(c.canaryFactory, cd)
+		if err != nil {
+			c.logger.Errorf("Failed to create oam canary controller for %s.%s ", name, namespace)
+			c.recordEventWarningf(cd, "%v", err)
+			return
+		}
+		// we aim to get the primary/source name once per advance canary
+		componentName = rollingController.SourceWorkload.GetLabels()[oam.LabelAppComponent]
+		canaryController = rollingController
+	} else {
+		// other controllers depends on the resource type
+		canaryController = c.canaryFactory.Controller(cd.Spec.TargetRef.Kind)
+	}
 	labelSelector, ports, err := canaryController.GetMetadata(cd)
 	if err != nil {
 		c.recordEventWarningf(cd, "%v", err)
 		return
 	}
 
+	var kubeRouter router.KubernetesRouter
 	// init Kubernetes router
-	kubeRouter := c.routerFactory.KubernetesRouter(cd.Spec.TargetRef.Kind, labelSelector, ports)
+	if c.meshProvider == flaggerv1.OAMProvider {
+		// it needs to know the name of the primary source for pod selector
+		kubeRouter = router.NewKubernetesOAMRouter(c.routerFactory, labelSelector, ports, componentName)
+	} else {
+		kubeRouter = c.routerFactory.KubernetesRouter(cd.Spec.TargetRef.Kind, labelSelector, ports)
+	}
 
 	// reconcile the canary/primary services
 	if err := kubeRouter.Initialize(cd); err != nil {
@@ -123,7 +146,14 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 	}
 
 	// init mesh router
-	meshRouter := c.routerFactory.MeshRouter(provider, labelSelector)
+	var meshRouter router.Interface
+	// init Kubernetes router
+	if c.meshProvider == flaggerv1.OAMProvider {
+		// it needs to know the name of the primary source for pod selector
+		meshRouter = router.NewOAMRouteWrapper(c.routerFactory, rollingController, provider, labelSelector)
+	} else {
+		meshRouter = c.routerFactory.MeshRouter(provider, labelSelector)
+	}
 
 	// register the AppMesh VirtualNodes before creating the primary deployment
 	// otherwise the pods will not be injected with the Envoy proxy
@@ -253,6 +283,11 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 
 	// route traffic back to primary if analysis has succeeded
 	if cd.Status.Phase == flaggerv1.CanaryPhasePromoting {
+		c.recordEventInfof(cd, "Promote %s.%s ", cd.Name, cd.Namespace)
+		if err := canaryController.Promote(cd); err != nil {
+			c.recordEventWarningf(cd, "%v", err)
+			return
+		}
 		c.runPromotionTrafficShift(cd, canaryController, meshRouter, provider, canaryWeight, primaryWeight)
 		return
 	}
@@ -408,8 +443,6 @@ func (c *Controller) runPromotionTrafficShift(canary *flaggerv1.Canary, canaryCo
 
 func (c *Controller) runCanary(canary *flaggerv1.Canary, canaryController canary.Controller,
 	meshRouter router.Interface, mirrored bool, canaryWeight int, primaryWeight int, maxWeight int) {
-	primaryName := fmt.Sprintf("%s-primary", canary.Spec.TargetRef.Name)
-
 	// increase traffic weight
 	if canaryWeight < maxWeight {
 		// If in "mirror" mode, do one step of mirroring before shifting traffic to canary.
@@ -428,7 +461,6 @@ func (c *Controller) runCanary(canary *flaggerv1.Canary, canaryController canary
 			c.logger.With("canary", fmt.Sprintf("%s.%s", canary.Name, canary.Namespace)).
 				Infof("Running mirror step %d/%d/%t", primaryWeight, canaryWeight, mirrored)
 		} else {
-
 			primaryWeight -= canary.GetAnalysis().StepWeight
 			if primaryWeight < 0 {
 				primaryWeight = 0
@@ -460,15 +492,6 @@ func (c *Controller) runCanary(canary *flaggerv1.Canary, canaryController canary
 		if promote := c.runConfirmPromotionHooks(canary); !promote {
 			return
 		}
-
-		// update primary spec
-		c.recordEventInfof(canary, "Copying %s.%s template spec to %s.%s",
-			canary.Spec.TargetRef.Name, canary.Namespace, primaryName, canary.Namespace)
-		if err := canaryController.Promote(canary); err != nil {
-			c.recordEventWarningf(canary, "%v", err)
-			return
-		}
-
 		// update status phase
 		if err := canaryController.SetStatusPhase(canary, flaggerv1.CanaryPhasePromoting); err != nil {
 			c.recordEventWarningf(canary, "%v", err)
@@ -479,8 +502,6 @@ func (c *Controller) runCanary(canary *flaggerv1.Canary, canaryController canary
 
 func (c *Controller) runAB(canary *flaggerv1.Canary, canaryController canary.Controller,
 	meshRouter router.Interface) {
-	primaryName := fmt.Sprintf("%s-primary", canary.Spec.TargetRef.Name)
-
 	// route traffic to canary and increment iterations
 	if canary.GetAnalysis().Iterations > canary.Status.Iterations {
 		if err := meshRouter.SetRoutes(canary, 0, 100, false); err != nil {
@@ -505,13 +526,6 @@ func (c *Controller) runAB(canary *flaggerv1.Canary, canaryController canary.Con
 
 	// promote canary - max iterations reached
 	if canary.GetAnalysis().Iterations == canary.Status.Iterations {
-		c.recordEventInfof(canary, "Copying %s.%s template spec to %s.%s",
-			canary.Spec.TargetRef.Name, canary.Namespace, primaryName, canary.Namespace)
-		if err := canaryController.Promote(canary); err != nil {
-			c.recordEventWarningf(canary, "%v", err)
-			return
-		}
-
 		// update status phase
 		if err := canaryController.SetStatusPhase(canary, flaggerv1.CanaryPhasePromoting); err != nil {
 			c.recordEventWarningf(canary, "%v", err)
@@ -522,8 +536,6 @@ func (c *Controller) runAB(canary *flaggerv1.Canary, canaryController canary.Con
 
 func (c *Controller) runBlueGreen(canary *flaggerv1.Canary, canaryController canary.Controller,
 	meshRouter router.Interface, provider string, mirrored bool) {
-	primaryName := fmt.Sprintf("%s-primary", canary.Spec.TargetRef.Name)
-
 	// increment iterations
 	if canary.GetAnalysis().Iterations > canary.Status.Iterations {
 		// If in "mirror" mode, mirror requests during the entire B/G canary test
@@ -574,13 +586,6 @@ func (c *Controller) runBlueGreen(canary *flaggerv1.Canary, canaryController can
 
 	// promote canary - max iterations reached
 	if canary.GetAnalysis().Iterations < canary.Status.Iterations {
-		c.recordEventInfof(canary, "Copying %s.%s template spec to %s.%s",
-			canary.Spec.TargetRef.Name, canary.Namespace, primaryName, canary.Namespace)
-		if err := canaryController.Promote(canary); err != nil {
-			c.recordEventWarningf(canary, "%v", err)
-			return
-		}
-
 		// update status phase
 		if err := canaryController.SetStatusPhase(canary, flaggerv1.CanaryPhasePromoting); err != nil {
 			c.recordEventWarningf(canary, "%v", err)
@@ -703,6 +708,7 @@ func (c *Controller) checkCanaryStatus(canary *flaggerv1.Canary, canaryControlle
 	}
 
 	if canary.Status.Phase == "" || canary.Status.Phase == flaggerv1.CanaryPhaseInitializing {
+		// compute the spec hash and stored in the canary status
 		if err := canaryController.SyncStatus(canary, flaggerv1.CanaryStatus{Phase: flaggerv1.CanaryPhaseInitialized}); err != nil {
 			c.logger.With("canary", fmt.Sprintf("%s.%s", canary.Name, canary.Namespace)).Errorf("%v", err)
 			return false
