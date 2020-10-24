@@ -8,8 +8,8 @@ import (
 
 // KubernetesOAMRouter is managing ClusterIP services for OAM flagger
 type KubernetesOAMRouter struct {
-	innerK8sRouter    *KubernetesDefaultRouter
-	componentName string
+	innerK8sRouter *KubernetesDefaultRouter
+	componentName  string
 }
 
 func NewKubernetesOAMRouter(factory *Factory, labelSelector string, ports map[string]int32,

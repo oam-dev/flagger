@@ -39,9 +39,9 @@ func (r Revisions) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
 
 func FindSourceWorkload(canary *flaggerv1.Canary, c client.Client, kubeClient kubernetes.Interface) (*unstructured.Unstructured, error) {
 	ctx := context.TODO()
-	workload, err := GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, canary.Spec.TargetRef.Name, canary.Spec.TargetRef.Namespace, c)
+	workload, err := GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, canary.Spec.TargetRef.Name, canary.GetNamespace(), c)
 	if err != nil {
-		return nil, fmt.Errorf("get OAM workload %s.%s err %v", canary.Spec.TargetRef.Name, canary.Spec.TargetRef.Namespace, err)
+		return nil, fmt.Errorf("get OAM workload %s.%s err %v", canary.Spec.TargetRef.Name, canary.GetNamespace(), err)
 	}
 	lb := workload.GetLabels()
 	if lb == nil {
@@ -62,7 +62,7 @@ func FindSourceWorkload(canary *flaggerv1.Canary, c client.Client, kubeClient ku
 			continue
 		}
 		workloadName := rev.Name
-		revisionWorkload, err := GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, workloadName, canary.Spec.TargetRef.Namespace, c)
+		revisionWorkload, err := GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, workloadName, canary.GetNamespace(), c)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				return getWorkloadByName(ctx, c, rev)

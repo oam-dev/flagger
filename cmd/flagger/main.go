@@ -64,7 +64,6 @@ var (
 )
 
 func init() {
-	flag.StringVar(&masterURL, "masterURL", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&metricsServer, "metrics-server", "http://prometheus:9090", "Prometheus URL.")
 	flag.DurationVar(&controlLoopInterval, "control-loop-interval", 10*time.Second, "Kubernetes API sync interval.")
 	flag.StringVar(&logLevel, "log-level", "debug", "Log level can be: debug, info, warning, error.")
@@ -92,7 +91,9 @@ func init() {
 
 func main() {
 	flag.Parse()
+	// controller runtime declared those in their init() func so we can't redecare them
 	kubeconfig = flag.Lookup("kubeconfig").Value.String()
+	masterURL = flag.Lookup("master").Value.String()
 	if ver {
 		fmt.Println("Flagger version", version.VERSION, "revision ", version.REVISION)
 		os.Exit(0)

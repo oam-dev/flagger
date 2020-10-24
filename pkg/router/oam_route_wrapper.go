@@ -33,7 +33,7 @@ func (r *OAMRouteWrapper) SetRoutes(canary *v1beta1.Canary, primaryWeight int, c
 		canary.GetName(), canary.GetNamespace(), primaryWeight, canaryWeight)
 	if internal.IsPromoted(canary) {
 		// only adjust canary replicas
-		if err := r.innerRouter.SetRoutes(canary, 0, 100, mirrored); err != nil {
+		if err := r.innerRouter.SetRoutes(canary, primaryWeight, canaryWeight, mirrored); err != nil {
 			return fmt.Errorf("adjust promoting router %s.%s failed %w, primaryWeight: %d, canaryWeight: %d", canary.Name, canary.Namespace, err, primaryWeight, canaryWeight)
 		}
 		// now scale up the target to max replica, the canary will be zeroed in ScaleToZero in the controller
@@ -45,7 +45,7 @@ func (r *OAMRouteWrapper) SetRoutes(canary *v1beta1.Canary, primaryWeight int, c
 		r.logger.Infof("Successfully promote the replicas of canary deployment %s.%s, replicas: %d", targetName,
 			canary.Namespace, targetReplica)
 	} else if internal.IsFailed(canary) {
-		if err := r.innerRouter.SetRoutes(canary, 100, 0, mirrored); err != nil {
+		if err := r.innerRouter.SetRoutes(canary, primaryWeight, canaryWeight, mirrored); err != nil {
 			return fmt.Errorf("adjust promoting router %s.%s failed %w, primaryWeight: %d, canaryWeight: %d", canary.Name, canary.Namespace, err, primaryWeight, canaryWeight)
 		}
 		// rollback, we make rollback as fast as possible.
@@ -61,7 +61,7 @@ func (r *OAMRouteWrapper) SetRoutes(canary *v1beta1.Canary, primaryWeight int, c
 		// now target is canary
 		canaryName := canary.Spec.TargetRef.Name
 		canaryReplicas := int32(0)
-		err = r.scalar.Scale(canaryName,  canaryReplicas)
+		err = r.scalar.Scale(canaryName, canaryReplicas)
 		if err != nil {
 			return fmt.Errorf("adjust replicas of canary deployment %s.%s failed %w, replicas: %d", canaryName, canary.Namespace, err, canaryReplicas)
 		}

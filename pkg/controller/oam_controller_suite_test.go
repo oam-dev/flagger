@@ -42,8 +42,7 @@ var ctrl *Controller
 var routerFactory *router.Factory
 var tLog *zap.SugaredLogger
 var oct_namespace string
-var ns  corev1.Namespace
-
+var ns corev1.Namespace
 
 func TestIntegrationTest(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -92,8 +91,8 @@ var _ = BeforeSuite(func() {
 	By("Create the OAM controller test namespace")
 	ns = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: oct_namespace,
-			Labels: map[string]string{"app":"flagger-testing"},
+			Name:   oct_namespace,
+			Labels: map[string]string{"app": "flagger-testing"},
 		},
 	}
 	err = k8sClient.Create(context.TODO(), &ns)
@@ -156,4 +155,3 @@ func newTestController(kubeClient *kubernetes.Clientset, flaggerClient clientset
 		version.VERSION,
 		"")
 }
-

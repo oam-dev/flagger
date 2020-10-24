@@ -306,7 +306,7 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 		}
 		c.recorder.SetStatus(cd, flaggerv1.CanaryPhaseSucceeded)
 		c.runPostRolloutHooks(cd, flaggerv1.CanaryPhaseSucceeded)
-		c.recordEventInfof(cd, "Promotion completed! Scaling down %s.%s", cd.Spec.TargetRef.Name, cd.Namespace)
+		c.recordEventInfof(cd, "Promotion completed!")
 		c.alert(cd, "Canary analysis completed successfully, promotion finished.",
 			false, flaggerv1.SeverityInfo)
 		return
@@ -396,7 +396,7 @@ func (c *Controller) runPromotionTrafficShift(canary *flaggerv1.Canary, canaryCo
 
 	// route all traffic to primary in one go when promotion step wight is not set
 	if canary.Spec.Analysis.StepWeightPromotion == 0 {
-		c.recordEventInfof(canary, "Routing all traffic to primary")
+		c.recordEventInfof(canary, "Promoting the traffic to the new targe in one shot")
 		if err := meshRouter.SetRoutes(canary, 100, 0, false); err != nil {
 			c.recordEventWarningf(canary, "%v", err)
 			return

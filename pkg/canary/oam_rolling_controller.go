@@ -81,7 +81,7 @@ func NewRollingController(factory *Factory, canary *flaggerv1.Canary) (*OAMRollo
 	}
 	// fetch the target once and for all since we can't use the informer cache
 	controller.targetWorkload, err = GetUnstructured(context.TODO(), canary.Spec.TargetRef.Kind,
-		canary.Spec.TargetRef.APIVersion, canary.Spec.TargetRef.Name, canary.Spec.TargetRef.Namespace, c)
+		canary.Spec.TargetRef.APIVersion, canary.Spec.TargetRef.Name, canary.GetNamespace(), c)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (orc *OAMRolloutController) Initialize(canary *flaggerv1.Canary) (err error
 		// scale the target/canary resource to zero first
 		if err := orc.Scale(canary.Spec.TargetRef.Name, 0); err != nil {
 			return fmt.Errorf("scaling down canary resource %s.%s failed: %w", canary.Spec.TargetRef.Name,
-				canary.Namespace,	err)
+				canary.Namespace, err)
 		}
 		orc.logger.Infof("scaling down canary resource %s.%s to zero succeed", canary.Spec.TargetRef.Name,
 			canary.Namespace)
@@ -200,7 +200,7 @@ func (orc *OAMRolloutController) GetMetadata(cd *flaggerv1.Canary) (string, map[
 		obj, found, err := unstructured.NestedMap(workload.Object, "spec", "template")
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to discover port from OAM workload %s.%s err %v",
-				cd.Spec.TargetRef.Name, cd.Spec.TargetRef.Namespace, err)
+				cd.Spec.TargetRef.Name, cd.GetNamespace(), err)
 		}
 		if found {
 			data, err := json.Marshal(obj)
@@ -223,11 +223,11 @@ func (orc *OAMRolloutController) SyncStatus(canary *flaggerv1.Canary, status fla
 	obg, found, err := unstructured.NestedMap(orc.targetWorkload.Object, "spec")
 	if err != nil {
 		return fmt.Errorf("fetch OAM workload spec %s.%s err %v", canary.Spec.TargetRef.Name,
-			canary.Spec.TargetRef.Namespace, err)
+			canary.GetNamespace(), err)
 	}
 	if !found {
 		return fmt.Errorf("OAM workload spec %s.%s not found", canary.Spec.TargetRef.Name,
-			canary.Spec.TargetRef.Namespace)
+			canary.GetNamespace())
 	}
 
 	configs, err := orc.configTracker.GetConfigRefs(canary)

@@ -75,7 +75,7 @@ func (c *Controller) checkMetricProviderAvailability(canary *flaggerv1.Canary) e
 }
 
 func (c *Controller) runBuiltinMetricChecks(canary *flaggerv1.Canary) bool {
-	if len(canary.GetAnalysis().Metrics)==0 {
+	if len(canary.GetAnalysis().Metrics) == 0 {
 		return true
 	}
 
