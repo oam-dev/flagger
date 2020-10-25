@@ -86,10 +86,6 @@ spec:
                   type: string
                 kind:
                   type: string
-                  enum:
-                    - DaemonSet
-                    - Deployment
-                    - Service
                 name:
                   type: string
             autoscalerRef:

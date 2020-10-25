@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/crossplane/oam-kubernetes-runtime/apis/core"
+	velav1alpha1 "github.com/oam-dev/kubevela/api/v1alpha1"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	autoscalingapi "k8s.io/api/autoscaling/v1"
@@ -52,6 +53,7 @@ func NewRollingController(factory *Factory, canary *flaggerv1.Canary) (*OAMRollo
 	var scheme = runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = core.AddToScheme(scheme)
+	_ = velav1alpha1.AddToScheme(scheme)
 	c, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		return nil, err
@@ -139,13 +141,13 @@ func (orc *OAMRolloutController) fetchSourceWorkload(canary *flaggerv1.Canary) e
 
 func (orc *OAMRolloutController) IsPrimaryReady(canary *flaggerv1.Canary) error {
 	// Source is the Primary
-	_, err := IsWorkloadReady(orc.SourceWorkload, canary.GetProgressDeadlineSeconds())
+	_, err := orc.IsWorkloadReady(orc.SourceWorkload, canary.GetProgressDeadlineSeconds())
 	return err
 }
 
 func (orc *OAMRolloutController) IsCanaryReady(canary *flaggerv1.Canary) (bool, error) {
 	// Target is the Canary
-	return IsWorkloadReady(orc.targetWorkload, canary.GetProgressDeadlineSeconds())
+	return orc.IsWorkloadReady(orc.targetWorkload, canary.GetProgressDeadlineSeconds())
 }
 
 func (orc *OAMRolloutController) Promote(canary *flaggerv1.Canary) error {

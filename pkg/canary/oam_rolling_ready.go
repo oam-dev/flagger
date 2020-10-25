@@ -1,10 +1,13 @@
 package canary
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
+	velav1alpha1 "github.com/oam-dev/kubevela/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -60,13 +63,12 @@ func (o *oamWorkload) GetStatusAvailableReplicas() *int64 {
 	return &obg
 }
 
-// isWorkloadReady determines if a workload is ready by checking the status conditions
+// IsWorkloadReady determines if a workload is ready by checking the status conditions
 // if a workload has exceeded the progress deadline it returns a non retriable error
-func (o *oamWorkload) isWorkloadReady(deadline int) (bool, error) {
-	retriable := true
-	switch o.w.GetKind() {
+func (orc *OAMRolloutController) IsWorkloadReady(workload *unstructured.Unstructured, deadline int) (bool, error) {
+	switch workload.GetKind() {
 	case "Deployment":
-		deployData, err := o.w.MarshalJSON()
+		deployData, err := workload.MarshalJSON()
 		if err != nil {
 			return false, err
 		}
@@ -76,43 +78,33 @@ func (o *oamWorkload) isWorkloadReady(deadline int) (bool, error) {
 			return false, err
 		}
 		return IsDeploymentReady(&deploy, deadline)
-	}
-
-	// workload standard condition 1: has ObservedGeneration in status
-	observedGeneration := o.GetStatusObservedGeneration()
-	if observedGeneration == nil {
-		return false, fmt.Errorf(
-			"kind:%s is not standard OAM workload, status.observedGeneration not found", o.w.GetKind())
-	}
-	if o.w.GetGeneration() <= *observedGeneration {
-		replica := o.GetReplicas()
-		statusReplica := o.GetStatusReplicas()
-		if statusReplica == nil {
-			return false, fmt.Errorf(
-				"kind:%s is not standard OAM workload, status.replicas not found", o.w.GetKind())
+	case "PodSpecWorkload":
+		// unmarshal to podSpec
+		podSpecData, err := workload.MarshalJSON()
+		if err != nil {
+			return false, err
 		}
-		statusUpdatedReplicas := o.GetStatusUpdatedReplicas()
-		if statusUpdatedReplicas == nil {
-			return false, fmt.Errorf(
-				"kind:%s is not standard OAM workload, status.updatedReplicas not found", o.w.GetKind())
+		var podSpec velav1alpha1.PodSpecWorkload
+		err = json.Unmarshal(podSpecData, &podSpec)
+		if err != nil {
+			return false, err
 		}
-		if replica != nil && *statusUpdatedReplicas < *replica {
-			return retriable, fmt.Errorf("waiting for rollout to finish: %d out of %d new replicas have been updated",
-				*statusUpdatedReplicas, *replica)
-		} else if *statusReplica > *statusUpdatedReplicas {
-			return retriable, fmt.Errorf("waiting for rollout to finish: %d old replicas are pending termination",
-				*statusReplica-*statusUpdatedReplicas)
+		// get the deployment
+		var deployName string
+		for _, res := range podSpec.Status.Resources {
+			if res.Kind == "Deployment" {
+				deployName = res.Name
+			}
 		}
-	} else {
-		return true, fmt.Errorf(
-			"waiting for rollout to finish: observed workload generation less then desired generation")
+		if len(deployName) == 0 {
+			return true, fmt.Errorf("Deployment not found for podSpecWorkload %s", workload.GetName())
+		}
+		deploy, err := orc.kubeClient.AppsV1().Deployments(workload.GetNamespace()).Get(context.TODO(), deployName,
+			metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return IsDeploymentReady(deploy, deadline)
 	}
 	return true, nil
-}
-
-// IsWorkloadReady determines if a workload is ready by checking the status conditions
-// if a workload has exceeded the progress deadline it returns a non retriable error
-func IsWorkloadReady(workload *unstructured.Unstructured, deadline int) (bool, error) {
-	oamWorkload := &oamWorkload{w: workload}
-	return oamWorkload.isWorkloadReady(deadline)
 }
