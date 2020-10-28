@@ -87,7 +87,7 @@ func newDaemonSetFixture(c *flaggerv1.Canary) daemonSetFixture {
 		KubeClient:    kubeClient,
 		FlaggerClient: flaggerClient,
 	}
-	canaryFactory := canary.NewFactory(kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
+	canaryFactory := canary.NewFactory(nil, kubeClient, flaggerClient, configTracker, []string{"app", "name"}, logger)
 
 	ctrl := &Controller{
 		kubeClient:       kubeClient,

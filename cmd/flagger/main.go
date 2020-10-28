@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	semver "github.com/Masterminds/semver/v3"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/transport"
 	_ "k8s.io/code-generator/cmd/client-gen/generators"
 
+	flaggerv1 "github.com/weaveworks/flagger/pkg/apis/flagger/v1beta1"
 	"github.com/weaveworks/flagger/pkg/canary"
 	clientset "github.com/weaveworks/flagger/pkg/client/clientset/versioned"
 	informers "github.com/weaveworks/flagger/pkg/client/informers/externalversions"
@@ -63,8 +64,6 @@ var (
 )
 
 func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&metricsServer, "metrics-server", "http://prometheus:9090", "Prometheus URL.")
 	flag.DurationVar(&controlLoopInterval, "control-loop-interval", 10*time.Second, "Kubernetes API sync interval.")
 	flag.StringVar(&logLevel, "log-level", "debug", "Log level can be: debug, info, warning, error.")
@@ -78,7 +77,8 @@ func init() {
 	flag.BoolVar(&zapReplaceGlobals, "zap-replace-globals", false, "Whether to change the logging level of the global zap logger.")
 	flag.StringVar(&zapEncoding, "zap-encoding", "json", "Zap logger encoding.")
 	flag.StringVar(&namespace, "namespace", "", "Namespace that flagger would watch canary object.")
-	flag.StringVar(&meshProvider, "mesh-provider", "istio", "Service mesh provider, can be istio, linkerd, appmesh, contour, gloo, nginx or skipper.")
+	flag.StringVar(&meshProvider, "mesh-provider", flaggerv1.OAMProvider, "Service mesh provider, "+
+		"can be oam (default) istio, linkerd, appmesh, contour, gloo, nginx or skipper.")
 	flag.StringVar(&selectorLabels, "selector-labels", "app,name,app.kubernetes.io/name", "List of pod labels that Flagger uses to create pod selectors.")
 	flag.StringVar(&ingressAnnotationsPrefix, "ingress-annotations-prefix", "nginx.ingress.kubernetes.io", "Annotations prefix for NGINX ingresses.")
 	flag.StringVar(&ingressClass, "ingress-class", "", "Ingress class used for annotating HTTPProxy objects.")
@@ -91,7 +91,9 @@ func init() {
 
 func main() {
 	flag.Parse()
-
+	// controller runtime declared those in their init() func so we can't redecare them
+	kubeconfig = flag.Lookup("kubeconfig").Value.String()
+	masterURL = flag.Lookup("master").Value.String()
 	if ver {
 		fmt.Println("Flagger version", version.VERSION, "revision ", version.REVISION)
 		os.Exit(0)
@@ -109,7 +111,7 @@ func main() {
 
 	stopCh := signals.SetupSignalHandler()
 
-	logger.Infof("Starting flagger version %s revision %s mesh provider %s", version.VERSION, version.REVISION, meshProvider)
+	logger.Infof("Starting flagger version % revision %s mesh provider %s", version.VERSION, version.REVISION, meshProvider)
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -184,7 +186,7 @@ func main() {
 		configTracker = &canary.NopTracker{}
 	}
 
-	canaryFactory := canary.NewFactory(kubeClient, flaggerClient, configTracker, labels, logger)
+	canaryFactory := canary.NewFactory(cfg, kubeClient, flaggerClient, configTracker, labels, logger)
 
 	c := controller.NewController(
 		kubeClient,

@@ -58,11 +58,11 @@ func (factory *Factory) KubernetesRouter(kind string, labelSelector string, port
 
 // MeshRouter returns a service mesh router
 func (factory *Factory) MeshRouter(provider string, labelSelector string) Interface {
-	return  &RouterScalableWrapper{
+	return &RouterScalableWrapper{
 		logger:        factory.logger,
 		flaggerClient: factory.flaggerClient,
-		kubeClient:        factory.kubeClient,
-		innerRouter: factory.innerMeshRouter(provider, labelSelector),
+		kubeClient:    factory.kubeClient,
+		innerRouter:   factory.innerMeshRouter(provider, labelSelector),
 	}
 }
 
@@ -149,5 +149,3 @@ func (factory *Factory) innerMeshRouter(provider string, labelSelector string) I
 		}
 	}
 }
-
-

@@ -4,10 +4,13 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 
+	restclient "k8s.io/client-go/rest"
+
 	clientset "github.com/weaveworks/flagger/pkg/client/clientset/versioned"
 )
 
 type Factory struct {
+	kubeCfg       *restclient.Config
 	kubeClient    kubernetes.Interface
 	flaggerClient clientset.Interface
 	logger        *zap.SugaredLogger
@@ -15,12 +18,14 @@ type Factory struct {
 	labels        []string
 }
 
-func NewFactory(kubeClient kubernetes.Interface,
+func NewFactory(kubeCfg *restclient.Config,
+	kubeClient kubernetes.Interface,
 	flaggerClient clientset.Interface,
 	configTracker Tracker,
 	labels []string,
 	logger *zap.SugaredLogger) *Factory {
 	return &Factory{
+		kubeCfg:       kubeCfg,
 		kubeClient:    kubeClient,
 		flaggerClient: flaggerClient,
 		logger:        logger,
@@ -49,7 +54,7 @@ func (factory *Factory) Controller(kind string) Controller {
 		kubeClient:    factory.kubeClient,
 		flaggerClient: factory.flaggerClient,
 	}
-	extDeploymentController :=  &ExtDeploymentController{
+	extDeploymentController := &ExtDeploymentController{
 		deploymentCtrl,
 	}
 	switch kind {

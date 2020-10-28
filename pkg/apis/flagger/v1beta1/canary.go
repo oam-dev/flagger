@@ -18,12 +18,13 @@ package v1beta1
 
 import (
 	"fmt"
-	"github.com/weaveworks/flagger/pkg/apis/edas/v1alpha1/route"
 	"time"
 
-	istiov1alpha3 "github.com/weaveworks/flagger/pkg/apis/istio/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/weaveworks/flagger/pkg/apis/edas/v1alpha1/route"
+	istiov1alpha3 "github.com/weaveworks/flagger/pkg/apis/istio/v1alpha3"
 )
 
 const (
@@ -31,6 +32,7 @@ const (
 	ProgressDeadlineSeconds = 600
 	AnalysisInterval        = 60 * time.Second
 	MetricInterval          = "1m"
+	OAMProvider             = "oam-provider"
 )
 
 // +genclient
@@ -67,7 +69,7 @@ type CanarySpec struct {
 	// +optional
 	MetricsServer string `json:"metricsServer,omitempty"`
 
-	SourceRef CrossNamespaceObjectReference `json:"sourceRef"`
+	SourceRef *CrossNamespaceObjectReference `json:"sourceRef,omitempty"`
 
 	// TargetRef references a target resource
 	TargetRef CrossNamespaceObjectReference `json:"targetRef"`
@@ -242,7 +244,7 @@ type CanaryAnalysis struct {
 
 	// Max replicas scale up to canary
 	// +optional
-	MaxReplicas  int `json:"maxReplicas,omitempty"`
+	MaxReplicas int `json:"maxReplicas,omitempty"`
 
 	// Increment replicas step
 	// +optional
