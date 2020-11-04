@@ -59,6 +59,10 @@ func FindSourceWorkload(canary *flaggerv1.Canary, c client.Client, kubeClient ku
 	sort.Sort(r)
 	for _, rev := range revisionList.Items {
 		if rev.Name == canary.Spec.TargetRef.Name {
+			// the targetRef is the first revision, just return
+			if rev.Revision == 1 {
+				return nil, nil
+			}
 			continue
 		}
 		workloadName := rev.Name

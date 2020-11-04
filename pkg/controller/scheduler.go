@@ -103,6 +103,7 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 	var componentName string
 	var rollingController *canary.OAMRolloutController
 	if c.meshProvider == flaggerv1.OAMProvider {
+
 		// init controller based on the provider for OAM
 		rollingController, err = canary.NewRollingController(c.canaryFactory, cd)
 		if err != nil {
@@ -110,8 +111,36 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 			c.recordEventWarningf(cd, "%v", err)
 			return
 		}
+		if cd.Spec.TargetRef.Name != cd.Status.ObservedRevision && cd.Status.Phase == flaggerv1.CanaryPhaseSucceeded {
+			cd.Status.ObservedRevision = cd.Spec.TargetRef.Name
+			if err := rollingController.SetStatusPhase(cd, flaggerv1.CanaryPhaseInitializing); err != nil {
+				c.recordEventWarningf(cd, "%v", err)
+				return
+			}
+		}
 		// we aim to get the primary/source name once per advance canary
-		componentName = rollingController.SourceWorkload.GetLabels()[oam.LabelAppComponent]
+		if rollingController.SourceWorkload == nil {
+			componentName = rollingController.TargetWorkload.GetLabels()[oam.LabelAppComponent]
+		} else {
+			componentName = rollingController.SourceWorkload.GetLabels()[oam.LabelAppComponent]
+		}
+		// after canaryController and kubeRouter init succeed, just make the phase succeed if no sourceworkload
+		if rollingController.SourceWorkload == nil {
+			if cd.Status.Phase == flaggerv1.CanaryPhaseSucceeded {
+				return
+			}
+			if err = rollingController.Initialize(cd); err != nil {
+				c.recordEventWarningf(cd, "%v", err)
+				return
+			}
+
+			// set status to succeeded
+			if err := rollingController.SetStatusPhase(cd, flaggerv1.CanaryPhaseSucceeded); err != nil {
+				c.recordEventWarningf(cd, "%v", err)
+				return
+			}
+			return
+		}
 		canaryController = rollingController
 	} else {
 		// other controllers depends on the resource type

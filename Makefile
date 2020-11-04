@@ -33,6 +33,9 @@ crd:
 	cat artifacts/flagger/crd.yaml > charts/flagger/crds/crd.yaml
 	cat artifacts/flagger/crd.yaml > kustomize/base/flagger/crd.yaml
 
+run:
+	go run cmd/flagger/main.go --kubeconfig ~/.kube/config --port 8088
+
 version-set:
 	@next="$(TAG)" && \
 	current="$(VERSION)" && \
@@ -63,7 +66,6 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=charts/flagger/crds
-	rm charts/vela-core/crds/_.yaml
 
 # Generate code
 generate: controller-gen
