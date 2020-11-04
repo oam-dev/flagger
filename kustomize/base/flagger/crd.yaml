@@ -700,6 +700,8 @@ spec:
             canaryWeight:
               description: Traffic weight percentage routed to canary
               type: number
+            observedRevision:
+              type: string
             failedChecks:
               description: Failed check count of the current canary analysis
               type: number

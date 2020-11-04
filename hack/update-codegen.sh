@@ -7,10 +7,12 @@ set -o pipefail
 SCRIPT_ROOT=$(git rev-parse --show-toplevel)
 
 # Grab code-generator version from go.sum.
-CODEGEN_VERSION=$(grep 'k8s.io/code-generator' go.sum | awk '{print $2}' | head -1)
+# CODEGEN_VERSION=$(grep 'k8s.io/code-generator' go.sum | awk '{print $2}' | head -1)
+CODEGEN_VERSION=v0.18.8
 CODEGEN_PKG=$(echo `go env GOPATH`"/pkg/mod/k8s.io/code-generator@${CODEGEN_VERSION}")
 
 echo ">> Using ${CODEGEN_PKG}"
+echo ">> SCRIPT_ROOT ${SCRIPT_ROOT}"
 
 # code-generator does work with go.mod but makes assumptions about
 # the project living in `$GOPATH/src`. To work around this and support

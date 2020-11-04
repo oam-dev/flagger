@@ -1,0 +1,32 @@
+apiVersion: v1
+entries:
+  flagger:
+  - apiVersion: v1
+    appVersion: 1.1.0
+    created: "2020-11-04T18:08:36.627864+08:00"
+    description: Flagger is a progressive delivery operator for Kubernetes
+    digest: 65b2a12c4713f802b9d38dd3dcc2b569a2846c47200651932b949a19d7401bb2
+    home: https://flagger.app
+    icon: https://raw.githubusercontent.com/weaveworks/flagger/master/docs/logo/weaveworks.png
+    keywords:
+    - flagger
+    - istio
+    - appmesh
+    - linkerd
+    - gloo
+    - contour
+    - nginx
+    - gitops
+    - canary
+    kubeVersion: '>=1.11.0-0'
+    maintainers:
+    - email: stefanprodan@users.noreply.github.com
+      name: stefanprodan
+      url: https://github.com/stefanprodan
+    name: flagger
+    sources:
+    - https://github.com/weaveworks/flagger
+    urls:
+    - https://oam.dev/flagger/archives/flagger-1.1.0.tgz
+    version: 1.1.0
+generated: "2020-11-04T18:08:36.626476+08:00"

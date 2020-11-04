@@ -6,7 +6,7 @@ build:
 	GIT_COMMIT=$$(git rev-list -1 HEAD) && CGO_ENABLED=0 GOOS=linux go build  \
 		-ldflags "-s -w -X github.com/weaveworks/flagger/pkg/version.REVISION=$${GIT_COMMIT}" \
 		-a -installsuffix cgo -o ./bin/flagger ./cmd/flagger/*
-	docker build -t weaveworks/flagger:$(TAG) . -f Dockerfile
+	docker build -t oamdev/flagger:$(TAG) . -f Dockerfile
 
 push:
 	docker tag weaveworks/flagger:$(TAG) weaveworks/flagger:$(VERSION)
@@ -32,6 +32,9 @@ test: test-fmt test-codegen
 crd:
 	cat artifacts/flagger/crd.yaml > charts/flagger/crds/crd.yaml
 	cat artifacts/flagger/crd.yaml > kustomize/base/flagger/crd.yaml
+
+run:
+	go run cmd/flagger/main.go --kubeconfig ~/.kube/config --port 8088
 
 version-set:
 	@next="$(TAG)" && \
@@ -63,7 +66,6 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=charts/flagger/crds
-	rm charts/vela-core/crds/_.yaml
 
 # Generate code
 generate: controller-gen

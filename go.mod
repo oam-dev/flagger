@@ -26,4 +26,5 @@ require (
 replace (
     k8s.io/klog => github.com/stefanprodan/klog v0.0.0-20190418165334-9cbb78b20423
     k8s.io/client-go => k8s.io/client-go v0.18.6
+    github.com/wercker/stern => github.com/oam-dev/stern v1.13.0-alpha
 )

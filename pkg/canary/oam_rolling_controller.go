@@ -40,7 +40,7 @@ type OAMRolloutController struct {
 	labels        []string
 	// we only need to fetch them once
 	SourceWorkload *unstructured.Unstructured
-	targetWorkload *unstructured.Unstructured
+	TargetWorkload *unstructured.Unstructured
 }
 
 func NewRollingController(factory *Factory, canary *flaggerv1.Canary) (*OAMRolloutController, error) {
@@ -82,7 +82,7 @@ func NewRollingController(factory *Factory, canary *flaggerv1.Canary) (*OAMRollo
 		return nil, err
 	}
 	// fetch the target once and for all since we can't use the informer cache
-	controller.targetWorkload, err = GetUnstructured(context.TODO(), canary.Spec.TargetRef.Kind,
+	controller.TargetWorkload, err = GetUnstructured(context.TODO(), canary.Spec.TargetRef.Kind,
 		canary.Spec.TargetRef.APIVersion, canary.Spec.TargetRef.Name, canary.GetNamespace(), c)
 	if err != nil {
 		return nil, err
@@ -91,6 +91,9 @@ func NewRollingController(factory *Factory, canary *flaggerv1.Canary) (*OAMRollo
 }
 
 func (orc *OAMRolloutController) Initialize(canary *flaggerv1.Canary) (err error) {
+	if orc.SourceWorkload == nil {
+		return orc.Scale(orc.TargetWorkload.GetName(), int32(canary.Spec.Analysis.MaxReplicas))
+	}
 	if canary.Status.Phase == "" || canary.Status.Phase == flaggerv1.CanaryPhaseInitializing {
 		if !canary.SkipAnalysis() {
 			if _, err := orc.IsCanaryReady(canary); err != nil {
@@ -140,6 +143,9 @@ func (orc *OAMRolloutController) fetchSourceWorkload(canary *flaggerv1.Canary) e
 }
 
 func (orc *OAMRolloutController) IsPrimaryReady(canary *flaggerv1.Canary) error {
+	if orc.SourceWorkload == nil {
+		return nil
+	}
 	// Source is the Primary
 	_, err := orc.IsWorkloadReady(orc.SourceWorkload, canary.GetProgressDeadlineSeconds())
 	return err
@@ -147,7 +153,7 @@ func (orc *OAMRolloutController) IsPrimaryReady(canary *flaggerv1.Canary) error 
 
 func (orc *OAMRolloutController) IsCanaryReady(canary *flaggerv1.Canary) (bool, error) {
 	// Target is the Canary
-	return orc.IsWorkloadReady(orc.targetWorkload, canary.GetProgressDeadlineSeconds())
+	return orc.IsWorkloadReady(orc.TargetWorkload, canary.GetProgressDeadlineSeconds())
 }
 
 func (orc *OAMRolloutController) Promote(canary *flaggerv1.Canary) error {
@@ -162,6 +168,9 @@ func (orc *OAMRolloutController) Promote(canary *flaggerv1.Canary) error {
 
 // The rollback and promoting are different process in OAM while it's the same in the flagger workflow
 func (orc *OAMRolloutController) ScaleToZero(canary *flaggerv1.Canary) error {
+	if orc.SourceWorkload == nil {
+		return nil
+	}
 	if internal.IsPromoted(canary) {
 		// We need to scale the source/primary to zero when the the canary is being promoted
 		return orc.Scale(orc.SourceWorkload.GetName(), 0)
@@ -183,7 +192,7 @@ func (orc *OAMRolloutController) GetMetadata(cd *flaggerv1.Canary) (string, map[
 	var ports map[string]int32
 
 	// we assume that the workload label is the same as the pod template selector
-	workload := orc.targetWorkload
+	workload := orc.TargetWorkload
 	targetLabels := workload.GetLabels()
 	for _, l := range orc.labels {
 		if _, ok := targetLabels[l]; ok {
@@ -222,7 +231,7 @@ func (orc *OAMRolloutController) GetMetadata(cd *flaggerv1.Canary) (string, map[
 
 func (orc *OAMRolloutController) SyncStatus(canary *flaggerv1.Canary, status flaggerv1.CanaryStatus) error {
 	// assuming that the target object has a spec
-	obg, found, err := unstructured.NestedMap(orc.targetWorkload.Object, "spec")
+	obg, found, err := unstructured.NestedMap(orc.TargetWorkload.Object, "spec")
 	if err != nil {
 		return fmt.Errorf("fetch OAM workload spec %s.%s err %v", canary.Spec.TargetRef.Name,
 			canary.GetNamespace(), err)
@@ -283,6 +292,9 @@ func (orc *OAMRolloutController) HaveDependenciesChanged(canary *flaggerv1.Canar
 
 // Finalize will revert rolling update back, we just scale up here.
 func (orc *OAMRolloutController) Finalize(canary *flaggerv1.Canary) error {
+	if orc.SourceWorkload == nil {
+		return nil
+	}
 	return orc.Scale(orc.SourceWorkload.GetName(), int32(canary.Spec.Analysis.MaxReplicas))
 }
 
@@ -290,11 +302,11 @@ func (orc *OAMRolloutController) Finalize(canary *flaggerv1.Canary) error {
 func (orc *OAMRolloutController) Scale(resourceName string, replicas int32) error {
 	ctx := context.TODO()
 	var res *unstructured.Unstructured
-	if orc.SourceWorkload.GetName() == resourceName {
+	if orc.SourceWorkload != nil && orc.SourceWorkload.GetName() == resourceName {
 		res = orc.SourceWorkload
 		orc.logger.Infof("Going to scale the source/primary resource %s", res.GetName())
-	} else if orc.targetWorkload.GetName() == resourceName {
-		res = orc.targetWorkload
+	} else if orc.TargetWorkload.GetName() == resourceName {
+		res = orc.TargetWorkload
 		orc.logger.Infof("Going to scale the target/canary resource %s", res.GetName())
 	} else {
 		return fmt.Errorf("cannot scale an unknown resource %s", resourceName)

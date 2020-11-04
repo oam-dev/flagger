@@ -67,11 +67,12 @@ const (
 
 // CanaryStatus is used for state persistence (read-only)
 type CanaryStatus struct {
-	Phase          CanaryPhase `json:"phase"`
-	FailedChecks   int         `json:"failedChecks"`
-	CanaryWeight   int         `json:"canaryWeight"`
-	CanaryReplicas int         `json:"canaryReplicas"`
-	Iterations     int         `json:"iterations"`
+	Phase            CanaryPhase `json:"phase"`
+	ObservedRevision string      `json:"observedRevision,omitempty"`
+	FailedChecks     int         `json:"failedChecks"`
+	CanaryWeight     int         `json:"canaryWeight"`
+	CanaryReplicas   int         `json:"canaryReplicas"`
+	Iterations       int         `json:"iterations"`
 	// +optional
 	TrackedConfigs *map[string]string `json:"trackedConfigs,omitempty"`
 	// +optional
