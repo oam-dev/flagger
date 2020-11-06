@@ -79,7 +79,8 @@ func init() {
 	flag.StringVar(&namespace, "namespace", "", "Namespace that flagger would watch canary object.")
 	flag.StringVar(&meshProvider, "mesh-provider", flaggerv1.OAMProvider, "Service mesh provider, "+
 		"can be oam (default) istio, linkerd, appmesh, contour, gloo, nginx or skipper.")
-	flag.StringVar(&selectorLabels, "selector-labels", "app,name,app.kubernetes.io/name", "List of pod labels that Flagger uses to create pod selectors.")
+	// add 'app.oam.dev/component' as OAM identify label
+	flag.StringVar(&selectorLabels, "selector-labels", "app,name,app.kubernetes.io/name,app.oam.dev/component", "List of pod labels that Flagger uses to create pod selectors.")
 	flag.StringVar(&ingressAnnotationsPrefix, "ingress-annotations-prefix", "nginx.ingress.kubernetes.io", "Annotations prefix for NGINX ingresses.")
 	flag.StringVar(&ingressClass, "ingress-class", "", "Ingress class used for annotating HTTPProxy objects.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election.")
