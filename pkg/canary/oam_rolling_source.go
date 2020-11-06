@@ -55,11 +55,16 @@ func FindSourceWorkload(canary *flaggerv1.Canary, c client.Client, kubeClient ku
 	if err != nil {
 		return nil, fmt.Errorf("get revision from component %s err %v", componentName, err)
 	}
+	// 1. the workload was not revision enabled before flagger rollout, this is the first time attached, just scale up
+	// to target replica
+	if canary.Spec.TargetRef.Name == componentName {
+		return nil, nil
+	}
 	var r Revisions = revisionList.Items
 	sort.Sort(r)
 	for _, rev := range revisionList.Items {
 		if rev.Name == canary.Spec.TargetRef.Name {
-			// the targetRef is the first revision, just return
+			// 2. the targetRef is the first revision, just scale up the target, no sourceWorkload.
 			if rev.Revision == 1 {
 				return nil, nil
 			}
@@ -69,7 +74,22 @@ func FindSourceWorkload(canary *flaggerv1.Canary, c client.Client, kubeClient ku
 		revisionWorkload, err := GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, workloadName, canary.GetNamespace(), c)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				return getWorkloadByName(ctx, c, rev)
+				// there are two cases could happen if not found
+				// 1. the workload has a custom name in component
+				wl, err := getWorkloadByName(ctx, c, rev)
+				if err == nil {
+					return wl, nil
+				}
+				// 2. the workload was not revisionenabled before flagger rollout trait is attached
+				//    the old workload revision name is the same with component name.
+				if kerrors.IsNotFound(err) {
+					revisionWorkload, err = GetUnstructured(ctx, canary.Spec.TargetRef.Kind, canary.Spec.TargetRef.APIVersion, componentName, canary.GetNamespace(), c)
+					if err == nil {
+						return revisionWorkload, nil
+					}
+					return nil, fmt.Errorf("source workload of %v not found", componentName)
+				}
+				return nil, err
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("source workload of %v not found", componentName))
 		}
@@ -105,8 +125,11 @@ func getWorkloadByName(ctx context.Context, c client.Client, rev v1.ControllerRe
 			" the revision workload from component %s with status %v",
 			component.Name, component.Status)
 	}
-	revisionWorkload, err := GetUnstructured(ctx, wl.GetKind(), wl.GetAPIVersion(), workloadName, wl.GetNamespace(), c)
+	revisionWorkload, err := GetUnstructured(ctx, wl.GetKind(), wl.GetAPIVersion(), workloadName, rev.GetNamespace(), c)
 	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, fmt.Sprintf("source workload of %s not found in component %s",
 			workloadName, component.GetName()))
 	}

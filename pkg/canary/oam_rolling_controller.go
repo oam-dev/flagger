@@ -143,6 +143,7 @@ func (orc *OAMRolloutController) fetchSourceWorkload(canary *flaggerv1.Canary) e
 }
 
 func (orc *OAMRolloutController) IsPrimaryReady(canary *flaggerv1.Canary) error {
+	fmt.Println("XXXXXXX", orc.SourceWorkload)
 	if orc.SourceWorkload == nil {
 		return nil
 	}
@@ -152,6 +153,7 @@ func (orc *OAMRolloutController) IsPrimaryReady(canary *flaggerv1.Canary) error 
 }
 
 func (orc *OAMRolloutController) IsCanaryReady(canary *flaggerv1.Canary) (bool, error) {
+	fmt.Println("XXXXXXX2", orc.TargetWorkload.GetGeneration())
 	// Target is the Canary
 	return orc.IsWorkloadReady(orc.TargetWorkload, canary.GetProgressDeadlineSeconds())
 }
